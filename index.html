@@ -5,7 +5,523 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>番号呼び出しシステム｜すずき歯科</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&display=swap');<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番号呼び出しシステム｜すずき歯科</title>
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --mint:#00C9A7;--navy:#0A1628;--dark:#0D1F35;
+  --white:#FFF;--warn:#FF6B6B;--dim:#8899A6;
+  --radius:14px;--nav-h:52px;
+}
+html,body{height:100%;overflow:hidden;font-family:'Noto Sans JP',sans-serif;background:var(--navy);color:var(--white)}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);z-index:200;display:flex;background:rgba(10,22,40,.97);border-bottom:1px solid rgba(0,201,167,.25);backdrop-filter:blur(12px)}
+.nav-btn{flex:1;border:none;background:transparent;color:var(--dim);font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:color .2s;border-bottom:3px solid transparent}
+.nav-btn.active{color:var(--mint);border-bottom-color:var(--mint)}
+.nav-btn:not(.active):hover{color:var(--white)}
+.nav-status{display:flex;align-items:center;gap:6px;padding:0 16px;font-size:11px;font-weight:700;color:var(--dim);flex-shrink:0}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .3s}
+.status-dot.online{background:var(--mint)}
+.status-dot.error{background:var(--warn)}
+
+/* SCREENS */
+.screen{display:none;position:fixed;top:var(--nav-h);left:0;right:0;bottom:0}
+.screen.active{display:block}
+
+/* MONITOR — 白背景・紺文字 */
+#monitor{background:#F8FAFC;width:100%;height:100%;position:relative;overflow:hidden}
+.rotate-notice{display:none;position:absolute;inset:0;z-index:50;background:#F8FAFC;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.rotate-notice-icon{font-size:48px}
+.rotate-notice-text{font-size:18px;font-weight:700;color:#6B7A8D;letter-spacing:.1em}
+@media(orientation:portrait){#monitor .rotate-notice{display:flex}}
+
+.flash-overlay{position:absolute;inset:0;z-index:10;background:rgba(0,100,200,.07);opacity:0;pointer-events:none}
+.flash-overlay.do-flash{animation:doFlash .55s ease-out forwards}
+@keyframes doFlash{0%{opacity:1}100%{opacity:0}}
+
+.m-idle{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;opacity:.45;transition:opacity .4s}
+.m-idle.gone{opacity:0;pointer-events:none}
+.m-idle-logo{font-size:15px;font-weight:700;letter-spacing:.2em;color:#1A3A5C}
+.m-idle-text{font-size:20px;font-weight:400;color:#3D5A7A}
+.m-idle-dot{width:8px;height:8px;border-radius:50%;background:#1A3A5C;animation:idlePulse 2s ease-in-out infinite}
+@keyframes idlePulse{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:1;transform:scale(1.5)}}
+
+.m-stack{display:none;position:absolute;inset:0;z-index:6;flex-direction:column;padding:8px 12px;gap:6px;overflow:hidden}
+.m-stack.visible{display:flex}
+.m-stack.single .m-row-label{font-size:clamp(14px,2vw,22px)}
+.m-stack.single .m-row-pt{font-size:clamp(60px,13vw,160px)}
+.m-stack.single .m-row-ch{font-size:clamp(44px,9vw,120px)}
+.m-stack.single .m-row-text{font-size:clamp(20px,3vw,40px)}
+
+.m-row{flex:1;min-height:0;position:relative;overflow:hidden;border-radius:14px;display:flex;align-items:center;padding:0 clamp(12px,2vw,28px);gap:clamp(8px,1.5vw,18px);background:#FFF;border:1.5px solid #E2EAF2;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.m-row.is-new{background:#EEF6FF;border-color:#5B9BD5}
+.m-row-badge{flex-shrink:0;font-size:clamp(9px,1vw,12px);font-weight:700;letter-spacing:.12em;color:#1A5FAB;background:#DDEEFF;border:1px solid #5B9BD5;border-radius:100px;padding:2px 10px;white-space:nowrap}
+.m-row-label{font-size:clamp(10px,1.3vw,15px);font-weight:700;color:#6B7A8D;white-space:nowrap;flex-shrink:0}
+.m-row-pt{font-size:clamp(22px,4vw,56px);font-weight:900;line-height:1;font-variant-numeric:tabular-nums;color:#1A3A5C;flex-shrink:0}
+.m-row-div{width:2px;height:clamp(24px,4vh,60px);background:linear-gradient(to bottom,transparent,#5B9BD5,transparent);flex-shrink:0}
+.m-row-ch{font-size:clamp(18px,3.2vw,44px);font-weight:900;line-height:1;font-variant-numeric:tabular-nums;color:#1A5FAB;flex-shrink:0}
+.m-row-text{font-size:clamp(14px,2vw,26px);font-weight:700;color:#1A3A5C;white-space:nowrap}
+.m-row-time{margin-left:auto;font-size:clamp(10px,1.1vw,14px);color:#8899A6;flex-shrink:0;padding-left:10px}
+.m-bar{position:absolute;bottom:0;left:0;height:3px;background:#5B9BD5;opacity:.55}
+
+.do-bounce{animation:doBounce .55s cubic-bezier(.36,.07,.19,.97)}
+@keyframes doBounce{0%{transform:scale(1)}20%{transform:scale(1.18)}40%{transform:scale(.93)}60%{transform:scale(1.07)}80%{transform:scale(.98)}100%{transform:scale(1)}}
+
+/* OPERATOR */
+#operator{background:var(--dark);width:100%;height:100%;overflow:hidden}
+.op-wrap{width:100%;height:100%;display:flex}
+@media(orientation:landscape){
+  .op-wrap{flex-direction:row}
+  .op-col-num{flex:1;border-right:1px solid rgba(255,255,255,.06)}
+  .op-col-chair{flex:1.1;border-right:1px solid rgba(255,255,255,.06)}
+  .op-col-hist{flex:1.2}
+  .op-col-num,.op-col-chair,.op-col-hist{display:flex;flex-direction:column;padding:18px 16px;gap:12px;min-width:0;overflow:hidden}
+}
+@media(orientation:portrait){
+  .op-wrap{flex-direction:column}
+  .op-top-row{flex:1;min-height:0;display:flex;flex-direction:row;border-bottom:1px solid rgba(255,255,255,.06)}
+  .op-col-num{flex:1;border-right:1px solid rgba(255,255,255,.06)}
+  .op-col-chair{flex:1.1}
+  .op-col-num,.op-col-chair{display:flex;flex-direction:column;padding:14px 12px;gap:10px;min-width:0;overflow:hidden}
+  .op-col-hist{flex:0 0 auto;height:38%;display:flex;flex-direction:column;padding:10px 14px;gap:8px;overflow:hidden}
+}
+.panel-title{font-size:10px;font-weight:700;letter-spacing:.22em;color:var(--mint);text-transform:uppercase;flex-shrink:0}
+
+.pt-display{flex-shrink:0;background:rgba(0,0,0,.38);border:1.5px solid rgba(0,201,167,.22);border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;justify-content:flex-end;min-height:64px}
+.pt-num{font-size:clamp(32px,5vw,50px);font-weight:900;font-variant-numeric:tabular-nums;color:var(--white);line-height:1}
+.pt-placeholder{font-size:clamp(16px,2.5vw,22px);font-weight:300;color:rgba(255,255,255,.15)}
+.pt-cursor{width:3px;height:clamp(30px,4vw,46px);background:var(--mint);margin-left:4px;animation:cursorBlink 1s step-end infinite;border-radius:2px}
+@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
+
+.numpad{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.nk{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:11px;color:var(--white);font-family:inherit;font-size:clamp(18px,3vw,26px);font-weight:700;cursor:pointer;transition:background .12s,border-color .12s,transform .1s;display:flex;align-items:center;justify-content:center}
+.nk:hover{background:rgba(0,201,167,.15);border-color:var(--mint)}
+.nk:active{transform:scale(.91)}
+.nk.nk-del{background:rgba(255,107,107,.07);border-color:rgba(255,107,107,.2);font-size:clamp(14px,2.2vw,20px);color:var(--warn)}
+.nk.nk-del:hover{background:rgba(255,107,107,.2);border-color:var(--warn)}
+.nk.nk-clr{background:rgba(255,107,107,.04);border-color:rgba(255,107,107,.14);font-size:clamp(9px,1.2vw,12px);letter-spacing:.04em;color:rgba(255,107,107,.65);font-weight:700}
+.nk.nk-zero{grid-column:1}
+
+.chair-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.ck{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.08);border-radius:11px;color:var(--white);font-family:inherit;font-size:clamp(16px,2.5vw,22px);font-weight:900;cursor:pointer;transition:background .13s,border-color .13s,transform .1s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px}
+.ck-sub{font-size:9px;font-weight:400;letter-spacing:.08em;color:var(--dim)}
+.ck:hover{background:rgba(0,201,167,.1);border-color:rgba(0,201,167,.38)}
+.ck:active{transform:scale(.91)}
+.ck.ck-sel{background:rgba(0,201,167,.2);border-color:var(--mint);color:var(--mint);box-shadow:0 0 12px rgba(0,201,167,.3)}
+.ck.ck-sel .ck-sub{color:rgba(0,201,167,.7)}
+
+.preview-card{flex-shrink:0;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.07);border-radius:11px;padding:9px 13px;display:flex;align-items:center;justify-content:space-between;font-size:12px;min-height:40px}
+.pv-val{font-weight:700;color:var(--mint);font-size:13px}
+.send-btn{flex-shrink:0;width:100%;padding:14px;background:var(--mint);border:none;border-radius:var(--radius);color:var(--navy);font-family:inherit;font-size:15px;font-weight:900;letter-spacing:.07em;cursor:pointer;transition:background .15s,transform .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;gap:7px}
+.send-btn:hover:not(:disabled){background:#00dfb9;transform:translateY(-1px);box-shadow:0 5px 18px rgba(0,201,167,.4)}
+.send-btn:active:not(:disabled){transform:translateY(0)}
+.send-btn:disabled{background:rgba(255,255,255,.09);color:var(--dim);cursor:not-allowed}
+
+.hist-list{flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;overflow-y:auto}
+.hist-list::-webkit-scrollbar{width:3px}
+.hist-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+.hist-item{flex-shrink:0;position:relative;overflow:hidden;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:8px;min-height:42px}
+.hist-item.hi-new{border-color:rgba(0,201,167,.38);background:rgba(0,201,167,.08)}
+.hist-item.hi-exp{opacity:.28}
+.hi-pt{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--white)}
+.hi-arr{font-size:11px;color:var(--dim);flex-shrink:0}
+.hi-ch{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--mint)}
+.hi-unit{font-size:11px;color:rgba(255,255,255,.35)}
+.hi-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex-shrink:0}
+.hi-time{font-size:11px;color:var(--dim)}
+.hi-rem{font-size:10px;color:rgba(255,107,107,.8)}
+.hi-bar{position:absolute;bottom:0;left:0;height:2px;background:var(--mint);opacity:.4}
+.hist-empty-msg{color:rgba(255,255,255,.18);font-size:13px;text-align:center;padding:18px 0}
+
+.toast{position:fixed;top:calc(var(--nav-h) + 10px);left:50%;transform:translateX(-50%) translateY(-6px);background:var(--mint);color:var(--navy);padding:9px 22px;border-radius:100px;font-size:13px;font-weight:700;letter-spacing:.04em;opacity:0;pointer-events:none;z-index:999;transition:opacity .25s,transform .25s;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchScreen('monitor',this)">📺　モニター画面</button>
+  <button class="nav-btn"        onclick="switchScreen('operator',this)">⌨️　オペレーター画面</button>
+  <div class="nav-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">接続中...</span>
+  </div>
+</nav>
+<div class="toast" id="toast"></div>
+
+<!-- MONITOR -->
+<div class="screen active" id="monitor">
+  <div class="flash-overlay" id="flashOverlay"></div>
+  <div class="rotate-notice">
+    <div class="rotate-notice-icon">🔄</div>
+    <div class="rotate-notice-text">横向きにしてください</div>
+  </div>
+  <div class="m-idle" id="mIdle">
+    <div class="m-idle-logo">瑞穂すずき歯科・矯正歯科</div>
+    <div class="m-idle-text">お呼びするまで、しばらくお待ちください</div>
+    <div class="m-idle-dot"></div>
+  </div>
+  <div class="m-stack" id="mStack"></div>
+</div>
+
+<!-- OPERATOR -->
+<div class="screen" id="operator">
+  <div class="op-wrap">
+    <div class="op-top-row">
+      <div class="op-col-num">
+        <div class="panel-title">診察券番号</div>
+        <div class="pt-display">
+          <span class="pt-num" id="ptNum" style="display:none"></span>
+          <span class="pt-placeholder" id="ptPh">番号を入力</span>
+          <div class="pt-cursor"></div>
+        </div>
+        <div class="numpad">
+          <button class="nk" onclick="nkInput('1')">1</button>
+          <button class="nk" onclick="nkInput('2')">2</button>
+          <button class="nk" onclick="nkInput('3')">3</button>
+          <button class="nk" onclick="nkInput('4')">4</button>
+          <button class="nk" onclick="nkInput('5')">5</button>
+          <button class="nk" onclick="nkInput('6')">6</button>
+          <button class="nk" onclick="nkInput('7')">7</button>
+          <button class="nk" onclick="nkInput('8')">8</button>
+          <button class="nk" onclick="nkInput('9')">9</button>
+          <button class="nk nk-zero" onclick="nkInput('0')">0</button>
+          <button class="nk nk-del"  onclick="nkDel()">⌫</button>
+          <button class="nk nk-clr"  onclick="nkClear()">CLR</button>
+        </div>
+      </div>
+      <div class="op-col-chair">
+        <div class="panel-title">チェア番号（1〜11）</div>
+        <div class="chair-grid" id="chairGrid"></div>
+        <div class="preview-card">
+          <span style="color:var(--dim);font-size:11px">呼び出し内容</span>
+          <span id="pvText" style="display:none">
+            診察券 <span class="pv-val" id="pvPt"></span> →
+            <span class="pv-val" id="pvCh"></span>番チェア
+          </span>
+          <span id="pvEmpty" style="color:rgba(255,255,255,.2);font-size:11px">入力してください</span>
+        </div>
+        <button class="send-btn" id="sendBtn" disabled onclick="doSend()">
+          <span>📢</span><span>呼び出す</span>
+        </button>
+      </div>
+    </div>
+    <div class="op-col-hist">
+      <div class="panel-title">呼び出し履歴（最大10件 / 5分間表示）</div>
+      <div class="hist-list" id="histList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+/* ── Firebase初期化 ── */
+var firebaseConfig = {
+  apiKey: "AIzaSyBVzADt_pFMv5MH6KrwZYror6Ox7ziULFs",
+  authDomain: "suzukidentalcall.firebaseapp.com",
+  databaseURL: "https://suzukidentalcall-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "suzukidentalcall",
+  storageBucket: "suzukidentalcall.firebasestorage.app",
+  messagingSenderId: "1056172336224",
+  appId: "1:1056172336224:web:cc777677f04c316f980f05"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+var callsRef = db.ref('calls');
+
+/* ── 接続状態監視 ── */
+db.ref('.info/connected').on('value', function(snap) {
+  var dot  = document.getElementById('statusDot');
+  var text = document.getElementById('statusText');
+  if (snap.val() === true) {
+    dot.className  = 'status-dot online';
+    text.textContent = 'Firebase 接続中';
+  } else {
+    dot.className  = 'status-dot error';
+    text.textContent = 'オフライン';
+  }
+});
+
+/* ── ローカル状態 ── */
+var EXPIRE_MS = 300000;
+var ptInput   = '';
+var selChair  = null;
+var calls     = [];   // Firebaseから同期されたデータ
+var ticker    = null;
+
+/* ── チェアグリッド生成 ── */
+var cg = document.getElementById('chairGrid');
+for (var ci = 1; ci <= 11; ci++) {
+  (function(n) {
+    var b = document.createElement('button');
+    b.className = 'ck';
+    b.id = 'ck' + n;
+    b.innerHTML = '<span>' + n + '</span><span class="ck-sub">チェア</span>';
+    b.onclick = function() { selChairFn(n); };
+    cg.appendChild(b);
+  })(ci);
+}
+
+/* ── テンキー ── */
+function nkInput(d) { if (ptInput.length >= 6) return; ptInput += d; updatePtDisplay(); }
+function nkDel()    { ptInput = ptInput.slice(0, -1); updatePtDisplay(); }
+function nkClear()  { ptInput = ''; updatePtDisplay(); }
+function updatePtDisplay() {
+  var n = document.getElementById('ptNum');
+  var p = document.getElementById('ptPh');
+  if (ptInput) { n.textContent = ptInput; n.style.display = ''; p.style.display = 'none'; }
+  else         { n.style.display = 'none'; p.style.display = ''; }
+  updatePreview();
+}
+
+/* ── チェア選択 ── */
+function selChairFn(n) {
+  var btns = document.querySelectorAll('.ck');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('ck-sel');
+  selChair = n;
+  document.getElementById('ck' + n).classList.add('ck-sel');
+  updatePreview();
+}
+
+/* ── プレビュー ── */
+function updatePreview() {
+  var ready = ptInput && selChair;
+  document.getElementById('pvPt').textContent = ptInput;
+  document.getElementById('pvCh').textContent = selChair ? String(selChair) : '';
+  document.getElementById('pvText').style.display  = ready ? '' : 'none';
+  document.getElementById('pvEmpty').style.display = ready ? 'none' : '';
+  document.getElementById('sendBtn').disabled = !ready;
+}
+
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+/* ── 呼び出し送信 → Firebaseに書き込み ── */
+function doSend() {
+  if (!ptInput || !selChair) return;
+  var now = new Date();
+  var timeStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  var entry = {
+    patient: ptInput,
+    chair:   selChair,
+    time:    timeStr,
+    ts:      Date.now()
+  };
+
+  /* Firebase に push（自動ID） */
+  callsRef.push(entry, function(err) {
+    if (err) {
+      showToast('送信エラー：' + err.message);
+    } else {
+      showToast('診察券 ' + entry.patient + ' → ' + entry.chair + '番チェア を呼び出しました');
+    }
+  });
+
+  /* 入力リセット */
+  ptInput = ''; selChair = null;
+  updatePtDisplay();
+  var btns = document.querySelectorAll('.ck');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('ck-sel');
+}
+
+/* ── Firebase リアルタイムリッスン ──
+   callsノード全体を監視。変更があるたびに calls[] を再構築して描画 */
+callsRef.on('value', function(snapshot) {
+  var now  = Date.now();
+  var raw  = [];
+  snapshot.forEach(function(child) {
+    var v = child.val();
+    v._key = child.key;
+    raw.push(v);
+  });
+
+  /* 新しい順・期限内のみ最大10件 */
+  raw.sort(function(a, b) { return b.ts - a.ts; });
+  calls = [];
+  for (var i = 0; i < raw.length; i++) {
+    if (now - raw[i].ts < EXPIRE_MS) calls.push(raw[i]);
+    if (calls.length >= 10) break;
+  }
+
+  /* 古いデータをFirebaseから自動削除 */
+  snapshot.forEach(function(child) {
+    if (now - child.val().ts >= EXPIRE_MS) {
+      callsRef.child(child.key).remove();
+    }
+  });
+
+  /* 描画更新 */
+  renderMonitorStack(false);
+  renderHist();
+
+  /* ticker不要（Firebase購読が常時監視） */
+  if (ticker) { clearInterval(ticker); ticker = null; }
+}, function(err) {
+  console.error('Firebase read error:', err);
+});
+
+/* ── 新着通知（前回より件数が増えたらアニメーション） ── */
+var prevNewestTs = 0;
+function maybeAnimate() {
+  if (calls.length === 0) return;
+  var newestTs = calls[0].ts;
+  if (newestTs !== prevNewestTs) {
+    prevNewestTs = newestTs;
+    triggerNewAnim(calls[0]);
+  }
+}
+
+function triggerNewAnim(entry) {
+  var fl = document.getElementById('flashOverlay');
+  fl.classList.remove('do-flash'); void fl.offsetWidth; fl.classList.add('do-flash');
+  setTimeout(function() {
+    var p = document.getElementById('mn-p-' + entry._key);
+    var c = document.getElementById('mn-c-' + entry._key);
+    if (p) { p.classList.remove('do-bounce'); void p.offsetWidth; p.classList.add('do-bounce'); }
+    if (c) { c.classList.remove('do-bounce'); void c.offsetWidth; c.classList.add('do-bounce'); }
+  }, 30);
+  playChime();
+}
+
+/* ── モニタースタック描画 ── */
+function renderMonitorStack(animate) {
+  var stack = document.getElementById('mStack');
+  var idle  = document.getElementById('mIdle');
+  var now   = Date.now();
+  var live  = [];
+  for (var i = 0; i < calls.length; i++) {
+    if (now - calls[i].ts < EXPIRE_MS) live.push(calls[i]);
+  }
+
+  if (live.length === 0) {
+    stack.innerHTML = '';
+    stack.classList.remove('visible', 'single');
+    idle.classList.remove('gone');
+    prevNewestTs = 0;
+    return;
+  }
+  idle.classList.add('gone');
+  stack.classList.add('visible');
+  stack.classList.toggle('single', live.length === 1);
+
+  var html = '';
+  for (var j = 0; j < live.length; j++) {
+    var e   = live[j];
+    var ratio = Math.max(0, 1 - (now - e.ts) / EXPIRE_MS);
+    var bw  = (ratio * 100).toFixed(1);
+    var key = e._key || ('local-' + j);
+    html += '<div class="m-row' + (j === 0 ? ' is-new' : '') + '">';
+    html += '<div class="m-bar" style="width:' + bw + '%"></div>';
+    if (j === 0) html += '<span class="m-row-badge">最新</span>';
+    html += '<span class="m-row-label">診察券番号</span>';
+    html += '<div class="m-row-pt" id="mn-p-' + key + '">' + e.patient + '</div>';
+    html += '<span class="m-row-label">の方</span>';
+    html += '<div class="m-row-div"></div>';
+    html += '<div class="m-row-ch" id="mn-c-' + key + '">' + e.chair + '</div>';
+    html += '<div class="m-row-text">番チェアまでお越しください。</div>';
+    html += '<div class="m-row-time">' + e.time + '</div>';
+    html += '</div>';
+  }
+  stack.innerHTML = html;
+
+  maybeAnimate();
+}
+
+/* ── オペレーター履歴描画 ── */
+function renderHist() {
+  var list = document.getElementById('histList');
+  list.innerHTML = '';
+  if (calls.length === 0) {
+    var em = document.createElement('div');
+    em.className = 'hist-empty-msg';
+    em.textContent = 'まだ呼び出し履歴はありません';
+    list.appendChild(em);
+    return;
+  }
+  var now = Date.now();
+  for (var i = 0; i < calls.length; i++) {
+    var e = calls[i];
+    var exp = now - e.ts >= EXPIRE_MS;
+    var ratio = Math.max(0, 1 - (now - e.ts) / EXPIRE_MS);
+    var bw = (ratio * 100).toFixed(1);
+    var remSec = Math.max(0, Math.ceil((EXPIRE_MS - (now - e.ts)) / 1000));
+    var remStr = exp ? '期限切れ'
+      : remSec >= 60 ? '残' + Math.floor(remSec / 60) + '分' + pad(remSec % 60) + '秒'
+      : '残' + remSec + '秒';
+    var item = document.createElement('div');
+    item.className = 'hist-item' + (i === 0 ? ' hi-new' : '') + (exp ? ' hi-exp' : '');
+    item.innerHTML =
+      '<div class="hi-bar" style="width:' + bw + '%"></div>' +
+      '<span class="hi-pt">' + e.patient + '</span>' +
+      '<span class="hi-arr">→</span>' +
+      '<span class="hi-ch">' + e.chair + '</span>' +
+      '<span class="hi-unit">番チェア</span>' +
+      '<div class="hi-right">' +
+        '<span class="hi-time">' + e.time + '</span>' +
+        '<span class="hi-rem">' + remStr + '</span>' +
+      '</div>';
+    list.appendChild(item);
+  }
+}
+
+/* ── チャイム ── */
+function playChime() {
+  try {
+    var ac = new (window.AudioContext || window.webkitAudioContext)();
+    var freqs = [523.25, 659.25, 783.99, 1046.5];
+    for (var i = 0; i < freqs.length; i++) {
+      (function(f, idx) {
+        var o = ac.createOscillator(), g = ac.createGain();
+        o.connect(g); g.connect(ac.destination);
+        o.type = 'sine'; o.frequency.value = f;
+        var t = ac.currentTime + idx * 0.16;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.25, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.62);
+        o.start(t); o.stop(t + 0.7);
+      })(freqs[i], i);
+    }
+  } catch(e) {}
+}
+
+/* ── トースト ── */
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 2800);
+}
+
+/* ── 画面切り替え ── */
+function switchScreen(id, btn) {
+  var screens = document.querySelectorAll('.screen');
+  for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+  var navBtns = document.querySelectorAll('.nav-btn');
+  for (var j = 0; j < navBtns.length; j++) navBtns[j].classList.remove('active');
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ── キーボード ── */
+document.addEventListener('keydown', function(e) {
+  if (!document.getElementById('operator').classList.contains('active')) return;
+  if (e.key >= '0' && e.key <= '9') nkInput(e.key);
+  if (e.key === 'Backspace') { e.preventDefault(); nkDel(); }
+  if (e.key === 'Escape') nkClear();
+  if (e.key === 'Enter') doSend();
+});
+</script>
+</body>
+</html>
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --mint:#00C9A7;--navy:#0A1628;--dark:#0D1F35;
