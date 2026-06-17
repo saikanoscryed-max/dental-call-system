@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firebase接続テスト</title>
+<style>
+body{font-family:sans-serif;padding:20px;background:#111;color:#fff;font-size:18px}
+.box{background:#222;border-radius:12px;padding:16px;margin:12px 0}
+.ok{color:#00C9A7}.err{color:#FF6B6B}.wait{color:#888}
+button{background:#00C9A7;border:none;color:#000;padding:12px 24px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;margin-top:12px}
+</style>
+</head>
+<body>
+<h2>Firebase 接続テスト</h2>
+
+<div class="box">
+  <b>1. SDKロード</b><br>
+  <span id="sdk" class="wait">確認中...</span>
+</div>
+<div class="box">
+  <b>2. Firebase初期化</b><br>
+  <span id="init" class="wait">確認中...</span>
+</div>
+<div class="box">
+  <b>3. データベース接続</b><br>
+  <span id="conn" class="wait">確認中...</span>
+</div>
+<div class="box">
+  <b>4. 書き込みテスト</b><br>
+  <span id="write" class="wait">待機中</span><br>
+  <button onclick="testWrite()">書き込みテスト実行</button>
+</div>
+<div class="box">
+  <b>5. 読み込みテスト</b><br>
+  <span id="read" class="wait">待機中</span>
+</div>
+<div class="box">
+  <b>エラー詳細</b><br>
+  <span id="err" class="wait">なし</span>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"
+  onload="document.getElementById('sdk').innerHTML='<span class=ok>✅ 読み込み成功</span>'"
+  onerror="document.getElementById('sdk').innerHTML='<span class=err>❌ 読み込み失敗（ネットワークエラー）</span>'">
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+window.onerror = function(msg, src, line) {
+  document.getElementById('err').innerHTML = '<span class="err">'+msg+' (line '+line+')</span>';
+};
+
+window.addEventListener('load', function() {
+  var initEl  = document.getElementById('init');
+  var connEl  = document.getElementById('conn');
+  var errEl   = document.getElementById('err');
+
+  try {
+    firebase.initializeApp({
+      apiKey: "AIzaSyBVzADt_pFMv5MH6KrwZYror6Ox7ziULFs",
+      authDomain: "suzukidentalcall.firebaseapp.com",
+      databaseURL: "https://suzukidentalcall-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "suzukidentalcall",
+      storageBucket: "suzukidentalcall.firebasestorage.app",
+      messagingSenderId: "1056172336224",
+      appId: "1:1056172336224:web:cc777677f04c316f980f05"
+    });
+    initEl.innerHTML = '<span class="ok">✅ 初期化成功</span>';
+
+    var db = firebase.database();
+
+    /* 接続状態 */
+    db.ref('.info/connected').on('value', function(snap) {
+      if (snap.val() === true) {
+        connEl.innerHTML = '<span class="ok">✅ 接続済み</span>';
+      } else {
+        connEl.innerHTML = '<span class="err">❌ 未接続</span>';
+      }
+    });
+
+    /* 5秒タイムアウト */
+    setTimeout(function() {
+      if (connEl.textContent.indexOf('確認中') !== -1) {
+        connEl.innerHTML = '<span class="err">⏱ タイムアウト（5秒）— WebSocketがブロックされている可能性</span>';
+      }
+    }, 5000);
+
+    window._db = db;
+
+  } catch(e) {
+    initEl.innerHTML = '<span class="err">❌ エラー: '+e.message+'</span>';
+    errEl.innerHTML  = '<span class="err">'+e.stack+'</span>';
+  }
+});
+
+function testWrite() {
+  var writeEl = document.getElementById('write');
+  var readEl  = document.getElementById('read');
+  var errEl   = document.getElementById('err');
+  if (!window._db) { writeEl.innerHTML='<span class="err">DBなし</span>'; return; }
+  writeEl.innerHTML = '<span class="wait">書き込み中...</span>';
+  var ref = window._db.ref('test_connection');
+  ref.set({ ts: Date.now(), msg: 'hello' }, function(err) {
+    if (err) {
+      writeEl.innerHTML = '<span class="err">❌ 書き込み失敗: '+err.message+'</span>';
+      errEl.innerHTML = '<span class="err">'+JSON.stringify(err)+'</span>';
+    } else {
+      writeEl.innerHTML = '<span class="ok">✅ 書き込み成功</span>';
+      /* 読み込みテスト */
+      ref.once('value', function(snap) {
+        if (snap.exists()) {
+          readEl.innerHTML = '<span class="ok">✅ 読み込み成功: '+JSON.stringify(snap.val())+'</span>';
+        } else {
+          readEl.innerHTML = '<span class="err">❌ データなし</span>';
+        }
+      }, function(e) {
+        readEl.innerHTML = '<span class="err">❌ 読み込み失敗: '+e.message+'</span>';
+      });
+    }
+  });
+}
+</script>
+</body>
+</html>
